@@ -16,9 +16,9 @@ async def tcp_client():
         writer.write(message.encode())
         await writer.drain()
 
-        # Receive response from the server
-        data = await reader.read(1024)
-        print(f"Received: {data.decode()}")
+        # # Receive response from the server
+        # data = await reader.read(1024)
+        # print(f"Received: {data.decode()}")
 
     except Exception as e:
         print(f"TCP client error: {e}")
