@@ -1,33 +1,73 @@
 import asyncio
-
-# TCP server configuration
-TCP_HOST = "127.0.0.1"
-TCP_PORT = 8888
+import os
 
 
-# TCP client to send and receive data
-async def tcp_client():
-    reader, writer = await asyncio.open_connection(TCP_HOST, TCP_PORT)
-
+async def connect_to_unix_socket(socket_path, timeout=5):
+    """
+    Attempts to connect to a Unix socket with a timeout.
+    Returns (reader, writer) if successful, otherwise (None, None).
+    """
     try:
-        # Send a message to the TCP server
-        message = "Hello from TCP client!"
-        print(f"Sending: {message}")
-        writer.write(message.encode())
-        await writer.drain()
+        # Check if the socket file exists
+        if not os.path.exists(socket_path):
+            raise FileNotFoundError(f"Socket not found at {socket_path}")
 
-        # # Receive response from the server
-        # data = await reader.read(1024)
-        # print(f"Received: {data.decode()}")
+        # Attempt to connect to the Unix socket with a timeout
+        reader, writer = await asyncio.wait_for(
+            asyncio.open_unix_connection(socket_path), timeout=timeout
+        )
 
-    except Exception as e:
-        print(f"TCP client error: {e}")
-    finally:
-        print("Closing TCP client connection...")
-        writer.close()
-        await writer.wait_closed()
+        print(f"Successfully connected to {socket_path}")
+        return reader, writer
+
+    except asyncio.TimeoutError:
+        print(f"Error: Connection timed out after {timeout} seconds")
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+    except ConnectionRefusedError:
+        print(f"Error: Connection refused by the socket at {socket_path}")
+    except OSError as e:
+        print(f"OS error: {e}")
+
+    return None, None
 
 
-# Run the TCP client
+async def send_to_unix_socket(socket_path, message):
+    """
+    Opens a connection and sends a message to the Unix socket.
+    Checks if the connection was successful before writing.
+    """
+    reader, writer = await connect_to_unix_socket(socket_path)
+
+    # Check if the connection was successful
+    if writer and not writer.is_closing():
+        try:
+            # Send the message
+            writer.write(message.encode())
+            await writer.drain()
+            print(f"Sent message: {message}")
+
+            # # Read response (optional)
+            # response = await reader.read(100)
+            # print(f"Received response: {response.decode()}")
+
+        finally:
+            # Close the connection
+            writer.close()
+            await writer.wait_closed()
+            print("Connection closed")
+    else:
+        print("Failed to connect, no data sent.")
+
+
+# Main entry point
+async def main():
+    socket_path = "/tmp/asyncio_unix_socket"  # Update with your Unix socket path
+    message = "Hello, Unix socket!\n"
+
+    # Send a message to the socket
+    await send_to_unix_socket(socket_path, message)
+
+
 if __name__ == "__main__":
-    asyncio.run(tcp_client())
+    asyncio.run(main())

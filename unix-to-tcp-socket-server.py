@@ -10,7 +10,7 @@ TCP_PORT = 8888
 # Handle incoming UNIX socket client messages
 async def handle_unix_client(reader, writer):
     addr = writer.get_extra_info("peername")
-    print(f"UNIX client connected: {addr}")
+    print(f"UNIX socket connected: {addr}")
 
     try:
         while True:
@@ -19,17 +19,19 @@ async def handle_unix_client(reader, writer):
                 break
 
             message = data.decode()
-            print(f"Received from UNIX client: {message}")
+            print(f"Received from UNIX socket: {message}")
 
             # Send acknowledgment back to the UNIX client
             response = f"Server received: {message}"
             writer.write(response.encode())
             await writer.drain()
 
+            print(f"Written data to UNIX socket: {message}")
+
     except Exception as e:
-        print(f"Error with UNIX client: {e}")
+        print(f"Error with UNIX socket: {e}")
     finally:
-        print("Closing UNIX client connection")
+        print("Closing UNIX socket connection")
         writer.close()
         await writer.wait_closed()
 
@@ -50,7 +52,8 @@ async def start_unix_server():
 
 # Run both TCP and UNIX servers concurrently
 async def main():
-    await asyncio.gather(start_unix_server())
+    # await asyncio.gather(start_unix_server())
+    await start_unix_server()
 
 
 if __name__ == "__main__":
